@@ -1,0 +1,6 @@
+After every code change, always run:
+git add .
+git commit -m "update"
+git push
+
+This must happen automatically at the end of every task.
