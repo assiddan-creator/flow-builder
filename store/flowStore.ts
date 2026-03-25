@@ -19,6 +19,8 @@ export type NodeType =
 
 export interface NodeData {
   label?: string;
+  /** Prompt text (alias of `prompt` on Text nodes — both kept in sync) */
+  text?: string;
   prompt?: string;
   model?: string;
   provider?: "replicate" | "gemini";
@@ -67,7 +69,7 @@ let nodeCounter = 1;
 
 const defaultData: Record<NodeType, NodeData> = {
   uploadNode: { label: "Upload", isRunning: false, isDone: false },
-  textNode: { label: "Prompt", prompt: "", isRunning: false, isDone: false },
+  textNode: { label: "Prompt", prompt: "", text: "", isRunning: false, isDone: false },
   imageGenNode: {
     label: "Image Gen",
     model: "google/nano-banana-2",
@@ -137,13 +139,16 @@ export const useFlowStore = create<FlowState>((set, get) => ({
 
       if (
         sourceNode?.type === "textNode" &&
-        targetNode?.type === "imageGenNode" &&
+        (targetNode?.type === "imageGenNode" || targetNode?.type === "editImageNode") &&
         connection.targetHandle === "prompt"
       ) {
+        const p = String(
+          (sourceNode.data as NodeData).text ??
+            (sourceNode.data as NodeData).prompt ??
+            ""
+        );
         updatedNodes = updatedNodes.map((n) =>
-          n.id === targetNode.id
-            ? { ...n, data: { ...n.data, prompt: sourceNode.data.prompt || "" } }
-            : n
+          n.id === targetNode!.id ? { ...n, data: { ...n.data, prompt: p } } : n
         );
       }
 

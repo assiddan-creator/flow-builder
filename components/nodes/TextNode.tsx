@@ -22,9 +22,13 @@ export default function TextNode({ id, data }: NodeProps) {
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const value = e.target.value;
-      updateNodeData(id, { prompt: value, label: value.slice(0, 30) || "Prompt" });
+      updateNodeData(id, {
+        prompt: value,
+        text: value,
+        label: value.slice(0, 30) || "Prompt",
+      });
 
-      // Propagate to connected image gen nodes
+      // Propagate to connected image gen / edit nodes
       const connected = edges
         .filter((edge) => edge.source === id && edge.targetHandle === "prompt")
         .map((edge) => edge.target);
@@ -55,7 +59,7 @@ export default function TextNode({ id, data }: NodeProps) {
       {/* Body */}
       <div className="p-3">
         <textarea
-          value={(nodeData.prompt as string) || ""}
+          value={(nodeData.prompt as string) || (nodeData.text as string) || ""}
           onChange={handleChange}
           placeholder="Write your prompt here…"
           rows={4}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { useFlowStore } from "@/store/flowStore";
 import type { NodeData } from "@/store/flowStore";
@@ -37,6 +37,18 @@ export default function ImageGenNode({ id, data }: NodeProps) {
   const provider = (nodeData.provider as Provider) || "replicate";
   const models = provider === "gemini" ? GEMINI_MODELS : REPLICATE_MODELS;
   const defaultModel = models[0].value;
+
+  /** Live prompt string from a connected Text (Prompt) node via the prompt handle */
+  const promptFromNode = useMemo(() => {
+    const edge = edges.find((e) => e.target === id && e.targetHandle === "prompt");
+    if (!edge) return "";
+    const src = nodes.find((n) => n.id === edge.source);
+    if (!src || src.type !== "textNode") return "";
+    const d = src.data as NodeData;
+    return String(d.text ?? d.prompt ?? "");
+  }, [edges, nodes, id]);
+
+  const localPromptText = (nodeData.prompt as string) || "";
 
   // Collect connected images for indicator (accept any non-empty string)
   const connectedImages = edges
@@ -78,10 +90,20 @@ export default function ImageGenNode({ id, data }: NodeProps) {
         })
         .filter((img): img is string => !!img);
 
+      const pe = currentEdges.find((e) => e.target === id && e.targetHandle === "prompt");
+      const srcPrompt = pe ? currentNodes.find((n) => n.id === pe.source) : undefined;
+      let promptFromRun = "";
+      if (srcPrompt?.type === "textNode") {
+        const d = srcPrompt.data as NodeData;
+        promptFromRun = String(d.text ?? d.prompt ?? "");
+      }
+      const localP = (nodeData.prompt as string) || "";
+      const finalPrompt = promptFromRun || localP;
+
       const outputUrl = await runGeneration({
         provider: currentProvider,
         model: (nodeData.model as string) || defaultModel,
-        prompt: (nodeData.prompt as string) || "",
+        prompt: finalPrompt,
         inputImages,
       });
 
@@ -215,14 +237,27 @@ export default function ImageGenNode({ id, data }: NodeProps) {
           </div>
         )}
 
-        {/* Prompt */}
-        <textarea
-          value={(nodeData.prompt as string) || ""}
-          onChange={(e) => updateNodeData(id, { prompt: e.target.value })}
-          placeholder="Describe the image…"
-          rows={3}
-          className="w-full bg-[#111] border border-[#333] rounded-lg px-2 py-2 text-xs text-white placeholder-[#555] resize-none focus:outline-none focus:border-accent transition-colors nodrag"
-        />
+        {/* Prompt — read-only when fed by a connected Prompt node */}
+        {promptFromNode ? (
+          <div className="space-y-1">
+            <p className="text-[9px] text-[#60a5fa] font-medium">פרומפט מחובר</p>
+            <textarea
+              readOnly
+              value={promptFromNode}
+              placeholder="Describe the image…"
+              rows={3}
+              className="w-full bg-[#1a2433] border border-[#334155] rounded-lg px-2 py-2 text-xs text-[#cbd5e1] resize-none cursor-default nodrag"
+            />
+          </div>
+        ) : (
+          <textarea
+            value={localPromptText}
+            onChange={(e) => updateNodeData(id, { prompt: e.target.value })}
+            placeholder="Describe the image…"
+            rows={3}
+            className="w-full bg-[#111] border border-[#333] rounded-lg px-2 py-2 text-xs text-white placeholder-[#555] resize-none focus:outline-none focus:border-accent transition-colors nodrag"
+          />
+        )}
 
         {/* Run */}
         <button
