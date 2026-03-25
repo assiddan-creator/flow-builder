@@ -7,7 +7,6 @@ out/
 
 # Build / cache
 *.tsbuildinfo
-tsconfig.tsbuildinfo
 
 # Debug / OS
 .DS_Store
